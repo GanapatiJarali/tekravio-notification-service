@@ -9,6 +9,7 @@ import com.tekravio.notification.service.entity.repo.NotificationRepository;
 import com.tekravio.notification.service.entity.repo.NotificationTemplateRepository;
 import com.tekravio.notification.service.entity.repo.NotificationTemplateVariantRepo;
 import com.tekravio.notification.service.exception.ValidationException;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -34,6 +35,7 @@ public class CommonService {
         return notificationRecipientRepository.findById(id).orElseThrow(() -> new ValidationException(200, "Notification reciepeint not found.", "Notification reciepeint not found."));
     }
 
+
     public Optional<Notification> fetchNotificationById(String notificationId) {
         return notificationRepository.findByNotificationId(notificationId);
     }
@@ -58,4 +60,14 @@ public class CommonService {
         notificationTemplateVariantRepo.saveAll(notificationTemplateVariants);
     }
 
+    @Cacheable(value = "notificationTemplate", key = "#id")
+    public NotificationTemplate getTemplateEntity(Long id) {
+        return notificationTemplateRepository.findById(id).orElseThrow(() -> new ValidationException(2020, "Template id not found", "Template id not found"
+        ));
+    }
+
+    @Cacheable(value = "notificationTemplateVariants", key = "#template.id")
+    public List<NotificationTemplateVariant> getTemplateVariants(NotificationTemplate template) {
+        return notificationTemplateVariantRepo.findByTemplate(template);
+    }
 }

@@ -10,11 +10,13 @@ import com.tekravio.notification.service.entity.repo.NotificationTemplateVariant
 import com.tekravio.notification.service.exception.ValidationException;
 import com.tekravio.notification.service.util.CommonService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -69,13 +71,15 @@ public class TemplateServiceImpl implements TemplateService {
 
     @Override
     public TemplateResponse getTemplate(Long id) {
-        NotificationTemplate notificationTemplate = notificationTemplateRepository.findById(id).orElseThrow(() -> new ValidationException(2020, "Template id not found ", "Template id not found"));
-        List<NotificationTemplateVariant> notificationRecipients = notificationTemplateVariantRepo.findByTemplate(notificationTemplate);
+        //Done @cacheable
+        NotificationTemplate notificationTemplate = commonService.getTemplateEntity(id);
+        List<NotificationTemplateVariant> notificationRecipients = commonService.getTemplateVariants(notificationTemplate);
+
         TemplateResponse templateResponse = new TemplateResponse();
         templateResponse.setTemplateCode(notificationTemplate.getTemplateCode());
         templateResponse.setVersion(1);
         List<TemplateVariantResponse> notificationTemplateVariants = new ArrayList<>();
-        notificationRecipients.stream().forEach(res -> {
+        notificationRecipients.forEach(res -> {
             TemplateVariantResponse notificationTemplateVariant = new TemplateVariantResponse();
             notificationTemplateVariant.setTitle(res.getTitle());
             notificationTemplateVariant.setSubject(res.getSubject());
@@ -89,10 +93,55 @@ public class TemplateServiceImpl implements TemplateService {
 
 
     @Override
+    @CacheEvict(value = "notificationTemplate", key = "#id")
     public BaseResponse deleteTemplate(Long id) {
         NotificationTemplate notificationTemplate = notificationTemplateRepository.findById(id).orElseThrow(() -> new ValidationException(2020, "Template id not found ", "Template id not found"));
         notificationTemplate.setActive(false);
         notificationTemplateRepository.save(notificationTemplate);
         return BaseResponse.success(null);
+    }
+
+    @Override
+    public BaseResponse<List<TemplateVariantResponse>> previewApi(Long id, TemplatePreviewRequest request) {
+
+        NotificationTemplate template = notificationTemplateRepository.findById(id).orElseThrow(() -> new ValidationException(
+                1014,
+                "Template not found",
+                "Template not found"));
+        List<NotificationTemplateVariant> variants =
+                notificationTemplateVariantRepo.findByTemplate(template);
+
+        List<TemplateVariantResponse> responses = new ArrayList<>();
+
+        for (NotificationTemplateVariant variant : variants) {
+
+            TemplateVariantResponse response = new TemplateVariantResponse();
+
+            response.setChannel(variant.getChannel());
+
+            response.setSubject(render(variant.getSubject(), request.getTemplateVariables()));
+
+            response.setTitle(render(variant.getTitle(), request.getTemplateVariables()));
+
+            response.setBody(render(variant.getBody(), request.getTemplateVariables()));
+            responses.add(response);
+        }
+        return BaseResponse.success(responses);
+    }
+
+    private String render(String template, Map<String, Object> variables) {
+        if (template == null) {
+            return null;
+        }
+        String result = template;
+
+        for (Map.Entry<String, Object> entry :
+                variables.entrySet()) {
+
+            result = result.replace(
+                    "{{" + entry.getKey() + "}}",
+                    String.valueOf(entry.getValue()));
+        }
+        return result;
     }
 }

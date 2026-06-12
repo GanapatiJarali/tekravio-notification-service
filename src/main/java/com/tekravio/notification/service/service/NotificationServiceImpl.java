@@ -15,6 +15,7 @@ import com.tekravio.notification.service.exception.ValidationException;
 import com.tekravio.notification.service.mapper.NotificationMapper;
 import com.tekravio.notification.service.util.CommonService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;

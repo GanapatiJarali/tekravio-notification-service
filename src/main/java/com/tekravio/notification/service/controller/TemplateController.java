@@ -1,13 +1,17 @@
 package com.tekravio.notification.service.controller;
 
 import com.tekravio.notification.service.common.BaseResponse;
+import com.tekravio.notification.service.dto.TemplatePreviewRequest;
 import com.tekravio.notification.service.dto.TemplateRequest;
 import com.tekravio.notification.service.dto.TemplateResponse;
+import com.tekravio.notification.service.dto.TemplateVariantResponse;
 import com.tekravio.notification.service.service.TemplateService;
 import org.springframework.http.HttpStatus;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 
 @RestController
@@ -35,5 +39,10 @@ public class TemplateController {
     @DeleteMapping("/templates/{id}")
     public ResponseEntity<BaseResponse> deleteTemplate(@PathVariable("id") Long id) {
         return new ResponseEntity<>(templateService.deleteTemplate(id), HttpStatus.OK);
+    }
+
+    @PostMapping("/templates/{id}/preview")
+    public ResponseEntity<BaseResponse<List<TemplateVariantResponse>>> previewApi(@PathVariable Long id, @RequestBody TemplatePreviewRequest request) {
+        return new ResponseEntity<>(templateService.previewApi(id, request), HttpStatus.OK);
     }
 }
