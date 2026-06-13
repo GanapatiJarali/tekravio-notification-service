@@ -7,7 +7,7 @@ import org.springframework.kafka.annotation.EnableKafka;
 
 @SpringBootApplication
 //@EnableKafka
-@EnableCaching
+//@EnableCaching
 public class TekravioNotificationServiceApplication {
 
     public static void main(String[] args) {

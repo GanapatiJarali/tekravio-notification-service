@@ -16,5 +16,7 @@ public interface TemplateService {
 
     BaseResponse deleteTemplate(@PathVariable("id") Long id);
 
+    TemplateRes upsertTemplate(String templateCode, TemplateReq request);
+
     BaseResponse<List<TemplateVariantResponse>> previewApi(Long id, TemplatePreviewRequest request);
 }

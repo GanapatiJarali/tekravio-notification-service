@@ -1,7 +1,7 @@
 package com.tekravio.notification.service.service;
 
 import com.tekravio.notification.service.common.BaseResponse;
-import com.tekravio.notification.service.config.JwtRequestContext;
+import com.tekravio.notification.service.core.JwtRequestContext;
 import com.tekravio.notification.service.dto.NotificationRequest;
 import com.tekravio.notification.service.dto.NotificationResponse;
 import com.tekravio.notification.service.dto.PageResponse;
@@ -23,6 +23,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -39,8 +40,7 @@ public class NotificationServiceImpl implements NotificationService {
     private final JwtRequestContext jwtRequestContext;
 
     @Autowired
-    public NotificationServiceImpl(KafkaTemplate<String, Object> kafkaTemplate, NotificationRepository notificationRepository, NotificationRecipientRepository notificationRecipientRepository, CommonService commonService, EncryptionService encryptionService, NotificationMapper notificationMapper, JwtRequestContext jwtRequestContext) {
-        this.kafkaTemplate = kafkaTemplate;
+    public NotificationServiceImpl(NotificationRepository notificationRepository, NotificationRecipientRepository notificationRecipientRepository, CommonService commonService, EncryptionService encryptionService, NotificationMapper notificationMapper, JwtRequestContext jwtRequestContext) {
         this.notificationRepository = notificationRepository;
 //        this.kafkaTemplate = kafkaTemplate;
         this.notificationRecipientRepository = notificationRecipientRepository;
@@ -53,14 +53,14 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public BaseResponse sendNotification(NotificationRequest request) {
-        String role = (String) jwtRequestContext.get("role");
-        if (!role.equals("SERVICE")) {
-            throw new ValidationException(1001, "UnAuthrosized ", "UnAuthrosized ");
+        List<String> role = (List<String>) jwtRequestContext.get("role");
+        if (!role.contains("SERVICE")) {
+            throw new ValidationException(1001, "UnAuthorized ", "UnAuthorized ");
         }
         NotificationRecipient notificationRecipient = commonService.fetchByNotificationRecipient(request.getRecipientId());
         Optional<Notification> notificationOptional = notificationRepository.findByNotificationId(request.getNotificationId());
         if (notificationOptional.isPresent()) {
-            throw new ValidationException(2001, "Notification id duplicate ", "notification id duplicate");
+            throw new ValidationException(2001, "Notification id duplicate ", "Notification id duplicate");
         }
         Optional<NotificationTemplate> notificationTemplate = commonService.fetchByNotificationTemplateId(request.getTemplateId());
         if (notificationTemplate.isEmpty()) {
@@ -119,7 +119,7 @@ public class NotificationServiceImpl implements NotificationService {
                 encryptionService.decrypt(notification.getMessageContent())
         );
 
-        kafkaTemplate.send("notifications." + notification.getChannel().name(), retryRequest);
+//        kafkaTemplate.send("notifications." + notification.getChannel().name(), retryRequest);
         NotificationResponse response =
                 notificationMapper.entityToResponse(notification);
 

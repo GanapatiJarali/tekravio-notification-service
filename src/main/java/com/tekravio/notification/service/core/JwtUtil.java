@@ -31,7 +31,9 @@ public class JwtUtil {
         log.info("generateToken user: Roles: {}", role);
         Map<String, Object> claims = new HashMap<>();
         claims.put("clientId", clientId);
-        claims.put("role", role);
+        List<String> rolesString = new ArrayList<>();
+        rolesString.add(role);
+        claims.put("role", rolesString);
         return Jwts.builder()
                 .setClaims(claims)
                 .setIssuer("tekravio-notification-service")

@@ -1,5 +1,6 @@
 package com.tekravio.notification.service.core;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tekravio.notification.service.exception.ValidationException;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
@@ -18,7 +19,9 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Component
@@ -40,14 +43,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         log.info("login {} :", request.getRequestURL().toString());
         //login and register api not required the jwtToken
-        if (request.getRequestURL().toString().contains("/login") || request.getRequestURL().toString().contains("/register")) {
+        String uri = request.getRequestURI();
+        if (uri.startsWith("/token") || uri.startsWith("/actuator/health") || uri.startsWith("/swagger-ui") || uri.startsWith("/v3/api-docs") || uri.startsWith("/swagger-resources") || uri.startsWith("/webjars")) {
+            log.info("Skipping filter for public endpoint: {}", uri);
             filterChain.doFilter(request, response);
-            log.info("login or register{} :", request.getRequestURL().toString());
+            return;
         } else {
             String authHeader = request.getHeader("Authorization");
             log.info("JWT_TOKEN :{}", authHeader);
             if (!StringUtils.hasText(authHeader)) {
-                throw new ValidationException(1012, "JWT Token is Absent", "JWT Token is Absent");
+                handleAuthException(response, "JWT Token is Absent");
+                return;
             }
             String token = null;
             if (authHeader.startsWith("Bearer ")) {
@@ -60,10 +66,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String email = jwtUtil.extractEmail(token);
             Claims claims = jwtUtil.extractAllClaims(token);
             List<String> roles = claims
-                    .get("roles", List.class);
+                    .get("role", List.class);
             //  Store in RequestContext
             jwtRequestContext.set("email", email);
-            jwtRequestContext.set("roles", roles);
+            jwtRequestContext.set("role", roles);
             jwtRequestContext.set("expireToken", claims.get("exp"));
             jwtRequestContext.set("JWT-Token", authHeader);
             log.info("requestContext: {}", jwtRequestContext);
@@ -77,6 +83,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             SecurityContextHolder.getContext().setAuthentication(authentication);
             filterChain.doFilter(request, response);
         }
+    }
+
+    private void handleAuthException(HttpServletResponse response, String message) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json");
+
+        Map<String, Object> errorResponse = new HashMap<>();
+        errorResponse.put("status", 401);
+        errorResponse.put("error", "Unauthorized");
+        errorResponse.put("message", message);
+
+        ObjectMapper mapper = new ObjectMapper();
+        response.getWriter().write(mapper.writeValueAsString(errorResponse));
     }
 }
 

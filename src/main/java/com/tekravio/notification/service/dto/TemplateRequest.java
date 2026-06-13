@@ -10,5 +10,6 @@ import java.util.List;
 public class TemplateRequest {
     @NotBlank(message = "Template code mandatory")
     private String templateCode;
+    private Long version;
     private List<VariantsRequest> variantsRequests;
 }

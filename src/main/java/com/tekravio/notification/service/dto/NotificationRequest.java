@@ -38,5 +38,4 @@ public class NotificationRequest {
 
     private Map<String, Object> metadata;
 
-    private Instant scheduledAt;
 }

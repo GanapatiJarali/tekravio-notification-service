@@ -7,17 +7,16 @@ import com.tekravio.notification.service.entity.NotificationTemplate;
 import com.tekravio.notification.service.entity.NotificationTemplateVariant;
 import com.tekravio.notification.service.entity.repo.NotificationTemplateRepository;
 import com.tekravio.notification.service.entity.repo.NotificationTemplateVariantRepo;
+import com.tekravio.notification.service.enumration.Channel;
 import com.tekravio.notification.service.exception.ValidationException;
 import com.tekravio.notification.service.util.CommonService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class TemplateServiceImpl implements TemplateService {
@@ -34,6 +33,7 @@ public class TemplateServiceImpl implements TemplateService {
     }
 
     @Override
+    @Transactional
     public BaseResponse<TemplateResponse> createTemplate(TemplateRequest request) {
         Optional<NotificationTemplate> notificationTemplate = commonService.findByTemplate(request.getTemplateCode());
         if (notificationTemplate.isPresent()) {
@@ -101,7 +101,70 @@ public class TemplateServiceImpl implements TemplateService {
         return BaseResponse.success(null);
     }
 
+    @Transactional
+    public TemplateRes upsertTemplate(String templateCode, TemplateReq request) {
+
+        NotificationTemplate template = new NotificationTemplate();
+        template.setTemplateCode(templateCode);
+
+        Integer version = request.getVersion();
+
+        if (version == null) {
+            Integer latestVersion =
+                    notificationTemplateRepository.findMaxVersionByTemplateCode(templateCode);
+            version = latestVersion + 1;
+        }
+
+        template.setVersion(version);
+        template.setActive(true);
+
+        NotificationTemplate savedTemplate =
+                notificationTemplateRepository.save(template);
+
+        List<TemplateRes.TemplateVariantResponse> variantResponses = new ArrayList<>();
+
+        for (TemplateReq.TemplateVariantRequest v : request.getVariants()) {
+
+            NotificationTemplateVariant variant = new NotificationTemplateVariant();
+            variant.setTemplate(savedTemplate);
+            variant.setChannel(v.getChannel());
+            variant.setSubject(v.getSubject());
+            variant.setTitle(v.getTitle());
+            variant.setBody(v.getBody());
+
+            notificationTemplateVariantRepo.save(variant);
+
+            // normal object creation (NO builder)
+            TemplateRes.TemplateVariantResponse response =
+                    new TemplateRes.TemplateVariantResponse();
+            response.setChannel(v.getChannel());
+            response.setSubject(v.getSubject());
+            response.setTitle(v.getTitle());
+            response.setBody(v.getBody());
+
+            variantResponses.add(response);
+        }
+
+        // Map conversion (no builder usage)
+        Map<Channel, TemplateRes.TemplateVariantResponse> variantMap = new HashMap<>();
+
+        for (TemplateRes.TemplateVariantResponse vr : variantResponses) {
+            variantMap.put(vr.getChannel(), vr);
+        }
+
+        TemplateRes response = new TemplateRes();
+        response.setTemplateCode(templateCode);
+        response.setVersion(version);
+        response.setActive(savedTemplate.isActive());
+        response.setCreatedAt(savedTemplate.getCreatedAt());
+        response.setUpdatedAt(savedTemplate.getUpdatedAt());
+        response.setVariants(variantMap);
+
+        return response;
+    }
+
     @Override
+    @Transactional
     public BaseResponse<List<TemplateVariantResponse>> previewApi(Long id, TemplatePreviewRequest request) {
 
         NotificationTemplate template = notificationTemplateRepository.findById(id).orElseThrow(() -> new ValidationException(

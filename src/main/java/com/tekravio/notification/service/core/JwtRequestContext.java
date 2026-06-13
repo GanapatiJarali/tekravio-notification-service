@@ -23,12 +23,11 @@ public class JwtRequestContext {
     }
 
     public String getEmail() {
-        return (String) requestVariables.get("email");
+        return (String) requestVariables.get("role");
     }
 
     public List<String> getRoles() {
-        List<String> list = (List<String>) requestVariables.get("roles");
+        List<String> list = (List<String>) requestVariables.get("role");
         return list;
     }
 }
- 
