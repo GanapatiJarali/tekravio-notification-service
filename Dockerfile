@@ -1,14 +1,10 @@
 FROM eclipse-temurin:21-jdk
 
-# Set working directory
 WORKDIR /app
 
-# Copy jar file from target folder
-COPY target/tekravio-notification-service.jar tekravio-notification-service.jar
+COPY target/tekravio-notification-service.jar app.jar
 
-# Expose port
-EXPOSE 8090
+EXPOSE 8080
 
-# Run the jar
-ENTRYPOINT ["java", "-jar", "e-commerce-application.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
 
